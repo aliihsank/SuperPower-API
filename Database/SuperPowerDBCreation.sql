@@ -182,7 +182,7 @@ primary key(c1Id,c2Id,aggrementId)
 
 /*Default data*/
 
-insert into dbo.Users values('admin','5921805Aa.','ali_krbl_95@hotmail.com')
+insert into dbo.Users values('userx','passx','xxx@hotmail.com')
 
 insert into dbo.Country values('Free Lands', 0, 0, 1)
 
