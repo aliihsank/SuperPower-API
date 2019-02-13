@@ -1,19 +1,13 @@
-from flask import Flask, request
-from flask_cors import CORS
-from flask_restful import Resource, Api
-import time
-from threading import Thread
-import pandas as pd
-from collections import Counter
+from flask_restful import Resource
+from flask import request
+from superpowerapi import api, ODBC_URL
+
 import pyodbc
 import json
 
-app = Flask(__name__)
-api = Api(app)
-CORS(app)
 
-#DB Connector Initialization:    
-cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER="";DATABASE=superpower;UID="";PWD="";MARS_Connection=yes', autocommit=True)
+#DB Connector Initialization:
+cnxn = pyodbc.connect(ODBC_URL, autocommit=True)
 cursor = cnxn.cursor()
 
 ######## API RESOURCE CLASSES ########
@@ -526,7 +520,3 @@ api.add_resource(SetTaxRateForProvince, '/setTaxRateForProvince')
 
 api.add_resource(MakeInvestment, '/makeInvestment')
 
-
-
-if __name__ == '__main__':
-    app.run(debug=True, use_reloader=True)
