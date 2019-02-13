@@ -5,13 +5,44 @@ SuperPower is a real-time mobile strategy game that can be played online with ot
 - This is backend part of my mobile online game
 - This project is in development
 
-## API ##
-- API is written in Python
-- You can find more details in "API" directory
+# API Informations
 
-## Database ##
-- This repo contains SQL files that creates database tables and fill them with default values
-- Also SQL files includes Stored Procedure definitions and usage of them
-- You can find more details in "Database" directory
+- API is developed using Flask RESTFUL with Python language
+- API is used as gateway between Unity Game and SQL Server, also manages some time dependent events too
+
+## Methods ##
+
+Theese methods can be requested from server:
+
+Method | URL 
+--- | --- 
+GET | /test
+POST | /test
+POST | /userLogin
+POST | /userRegister
+POST | /forgotPassword
+POST | /countriesDetails
+POST | /provincesDetails
+POST | /myCountryDetails
+POST | /armyInformations
+POST | /giveMissionToCorps
+POST | /abortMissionOfCorp
+POST | /aggrementsInformations
+POST | /declineAggrement
+POST | /offerAggrement
+POST | /answerAggrementOffer
+POST | /aggrementOfferInformations
+POST | /regulationsInformations
+POST | /lawsInformations
+POST | /declineRegulation
+POST | /declineLaw
+POST | /makeRegulation
+POST | /makeLaw
+POST | /budgetInformations
+POST | /setBudgetForProvince
+POST | /setBudgetForArmy
+POST | /setTaxRateForProvince
+POST | /makeInvestment
+
 
 
