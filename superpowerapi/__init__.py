@@ -10,4 +10,4 @@ CORS(app)
 
 ODBC_URL = os.environ.get('ODBC_URL')
 
-import superpowerapi.api
+import superpowerapi.spapi
