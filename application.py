@@ -1,16 +1,31 @@
-from flask_restful import Resource
-from flask import request
-from superpowerapi import api, ODBC_URL
+import os
+from flask import Flask, request
+from flask_cors import CORS
+from flask_restful import Resource, Api
 
-import pyodbc
+import pymssql
 import json
 
 
-#DB Connector Initialization:
-cnxn = pyodbc.connect(ODBC_URL, autocommit=True)
-cursor = cnxn.cursor()
+application = Flask(__name__)
+#application.debug = False
+api = Api(application)
+CORS(application)
+
+
+RDS_SERVER_NAME = os.environ.get('RDS_SERVER_NAME')
+RDS_DATABASE = os.environ.get('RDS_DATABASE')
+RDS_USER = os.environ.get('RDS_USER')
+RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
+
+
 
 ######## API RESOURCE CLASSES ########
+
+class MainPage(Resource):
+    def get(self):
+        return {"Author": "Ali İhsan KARABAL", "Project Name": "Super Power API", "Definition": "Mobile Game API"}
+
 
 class Test(Resource):
     def get(self):
@@ -19,19 +34,32 @@ class Test(Resource):
     def post(self):
         return {'Test Message(POST)': 'Welcome to new API !!'}
 
+
 #Returns : exists
 class UserLogin(Resource):
     def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password'] 
-        
-        uId = cursor.execute("{call userCheck(?,?)}", (email, password)).fetchval()
-        if(uId != None and uId != 0):
-            return {'exists': True}
-        else:
-            return {'exists': False}
-        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE)
+            cursor = conn.cursor()
+            
+            data = request.get_json()
+            email = data['email']
+            password = data['password']
+            
+            cursor.callproc('userCheck', (email, password))
+            cursor.nextset()
+            results = cursor.fetchall()
+            
+            if(results != None and results):
+                return {'info': 1, 'exists': True}
+            else:
+                return {'info': 1, 'exists': False}
+        except Exception as e:
+            print("hata: " + str(e))
+            return {'info': -1, 'details': str(e)}
+
+
+'''
 #Returns : successful
 class UserRegister(Resource):
     def post(self):
@@ -482,13 +510,14 @@ class MakeInvestment(Resource):
         else:
             return {'successful': False}
         
-    
+    '''
 #######################################
         
-
+api.add_resource(MainPage, '/')
 api.add_resource(Test, '/test')
 
 api.add_resource(UserLogin, '/userLogin')  
+"""
 api.add_resource(UserRegister, '/userRegister')
 api.add_resource(ForgotPassword, '/forgotPassword')
 
@@ -520,3 +549,4 @@ api.add_resource(SetTaxRateForProvince, '/setTaxRateForProvince')
 
 api.add_resource(MakeInvestment, '/makeInvestment')
 
+"""
