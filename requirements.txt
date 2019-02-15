@@ -1,6 +1,6 @@
---find-links wheelhouse
+pip==19.0.2
 gunicorn==19.9.0
 flask==1.0.2
 flask_cors==3.0.4
 flask-restful==0.3.7
-pyodbc==4.0.25
+pymssql==2.1.4
