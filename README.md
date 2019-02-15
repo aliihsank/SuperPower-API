@@ -45,9 +45,16 @@ POST | /setTaxRateForProvince
 POST | /makeInvestment
 
 
+## What's New ##
+
+- SQL Library changed from pyodbc to pymssql
+- Project is moved from Heroku to AWS Elastic Beanstalk
+- Only userCheck method is active for now (2/15/2019)
+
+
 ### TODOs: ###
 
--Empty for now
+- Make tests for disabled methods and publish
 
 
 
