@@ -64,10 +64,15 @@ POST | /makeInvestment
 This part is for author, aliihsank to not to forget what to do
 
 1)Make local unit test for every new functionality
+
 1)Check requirements.txt for missing libraries
+
 2)Deploy to remote
+
 3)Make remote unit test from Postman
+
 4)Publish API to public
+
 5)Remove added functionalities from TODO list
 
 
