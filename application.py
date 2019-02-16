@@ -1,3 +1,11 @@
+#DEFINITIONS
+"""
+INFO 1= Successful request, 0 or -1 = Server or Database Error
+DETAILS RETURN VALUE: (real return value that user is waiting)
+
+"""
+
+
 import os
 from flask import Flask, request
 from flask_cors import CORS
@@ -19,7 +27,6 @@ RDS_USER = os.environ.get('RDS_USER')
 RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
 
 
-
 ######## API RESOURCE CLASSES ########
 
 class MainPage(Resource):
@@ -35,32 +42,32 @@ class Test(Resource):
         return {'Test Message(POST)': 'Welcome to new API !!'}
 
 
-#Returns : exists
+#Takes : email, password
+#Returns : uid
 class UserLogin(Resource):
     def post(self):
         try:
-            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE)
-            cursor = conn.cursor()
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit=True)
+            cursor = conn.cursor(as_dict = True)
             
             data = request.get_json()
             email = data['email']
             password = data['password']
-            
-            cursor.callproc('userCheck', (email, password))
-            cursor.nextset()
-            results = cursor.fetchall()
-            
-            if(results != None and results):
-                return {'info': 1, 'exists': True}
+                        
+            params = (email, password,)
+            cursor.callproc('userLogin', (params))
+            if cursor.nextset():
+                result = cursor.fetchone()
+                return {'info': 1, 'details': result['ID']}
             else:
-                return {'info': 1, 'exists': False}
+                return {'info': 1, 'details': -1}
         except Exception as e:
-            print("hata: " + str(e))
+            print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
 
 
-'''
-#Returns : successful
+#Takes : uname, cname, email, password
+#Returns : Result as (1,0,-1)
 class UserRegister(Resource):
     def post(self):
         data = request.get_json()
@@ -69,87 +76,127 @@ class UserRegister(Resource):
         email = data['email']
         password = data['password']
         
-        sql = """\
-        DECLARE @rv int;
-        EXEC @rv = userRegister @uname=?, @cname=?, @email=?, @password=?
-        SELECT @rv AS return_value;
-        """
-        params = (uname, countryName, email, password)
-        res = cursor.execute(sql, params).fetchval()
-        if res > 0:
-            return {'successful': True} 
-        else:
-            return {'successful': False}
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
             
-#Returns : successful       
-class ForgotPassword(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
+            
+            params = (uname, countryName, email, password,)
+            cursor.callproc('userRegister', (params))
+            if cursor.nextset():
+                result = cursor.fetchone()
+                            
+                if result["Result"] == 1:
+                    return {'info': 1, 'details': 1} 
+                elif result["Result"] == 0:
+                    return {'info': 1, 'details': 0}
+                elif result["Result"] == -1:
+                    return {'info': 1, 'details': -1}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
 
-        return {'successful': True}
-    
-#Returns : cname, totalPopulation, avgTaxRate, #ofProvinces, lastYearsIncome, remainingOfIncome statusWith
-class CountriesDetails(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-     
-        rows = cursor.execute("{call countriesDetails(?,?)}", (email, password)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "id" : row[0],
-                "cname" : row[1],
-                "population" : row[2],
-                "taxRate": row[3],
-                "provinceNum": row[4],
-                "income": row[5],
-                "remaining": row[6]
-                }
-            dataList.append(data_as_dict)
-            
-        return json.dumps(dataList)
 
-#Params : countryId          
-#Returns : pname, population, taxRate, militaryCorpsInProvince, quantityOfResources, quantityOfProducts, typesOfInvestments, lastBudgetAmount, lastBudgetRemaining
-class ProvincesDetails(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        countryID = data['countryId']
-        year = data['year']
-        
-        rows = cursor.execute("{call provincesDetails(?,?,?,?)}", (email, password, countryID, year)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "name" : row[0],
-                "population" : row[1],
-                "taxRate" : row[2],
-                "corpsInProvince": row[3],
-                "resources": row[4],
-                "products": row[5],
-                "investments": row[6],
-                "budgetDetails": row[7]
-                }
-            dataList.append(data_as_dict)
-            
-        return json.dumps(dataList)
-            
-    
-#Deprecated in 14.12.2018
-#Returns : ...
+#Takes : email, password
+#Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, remainingOfIncome
 class MyCountryDetails(Resource):
     def post(self):
         data = request.get_json()
         email = data['email']
         password = data['password']
+     
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+                        
+            params = (email, password,)
+            cursor.callproc('myCountryDetails', (params))
+            if cursor.nextset():
+                result = cursor.fetchone()
         
-        return {}
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+
+
+#Takes : email, password
+#Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, statusWith(me)
+class OtherCountriesDetails(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+     
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
     
+            params = (email, password,)
+            cursor.callproc('otherCountriesDetails', (params))
+            if cursor.nextset():
+                result = cursor.fetchone()
+        
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+
+
+#Params : email, password
+#Returns : pid, pname, governorName, population, taxRate 
+class MyProvincesDetails(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+    
+            params = (email, password,)
+            cursor.callproc('myProvincesDetails', (params))
+            cursor.nextset()
+            result = cursor.fetchall()
+    
+            return {'info': 1, 'details': result}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+        
+        
+
+#Params : email, password
+#Returns : pid, pname, population, governorName
+class OtherProvincesDetails(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+    
+            params = (email, password,)
+            cursor.callproc('otherProvincesDetails', (params))
+            cursor.nextset()
+            result = cursor.fetchall()
+    
+            return {'info': 1, 'details': result}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+
+
+'''
 #Returns : My army informations - armyBudget, List<armyCorps,opearation>
 class ArmyInformations(Resource):
     def post(self):
@@ -510,21 +557,25 @@ class MakeInvestment(Resource):
         else:
             return {'successful': False}
         
-    '''
+'''
 #######################################
         
 api.add_resource(MainPage, '/')
 api.add_resource(Test, '/test')
 
 api.add_resource(UserLogin, '/userLogin')  
-"""
+
 api.add_resource(UserRegister, '/userRegister')
-api.add_resource(ForgotPassword, '/forgotPassword')
 
-api.add_resource(CountriesDetails, '/countriesDetails')
-api.add_resource(ProvincesDetails, '/provincesDetails')
-api.add_resource(MyCountryDetails, '/myCountryDetails')
+#Forgot Password - Disabled For Now
+#api.add_resource(ForgotPassword, '/forgotPassword')
 
+api.add_resource(MyCountryDetails, '/myCountriesDetails')
+api.add_resource(OtherCountriesDetails, '/otherProvincesDetails')
+api.add_resource(MyProvincesDetails, '/myProvincesDetails')
+api.add_resource(OtherProvincesDetails, '/otherProvincesDetails')
+
+"""
 api.add_resource(ArmyInformations, '/armyInformations')
 api.add_resource(GiveMissionToCorps, '/giveMissionToCorps')
 api.add_resource(AbortMissionOfCorp, '/abortMissionOfCorp')
