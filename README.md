@@ -55,7 +55,8 @@ POST | /makeInvestment
 ### TODOs: ###
 
 - Make tests for disabled methods and publish
-
+- Make use of DailyUpdates
+- Update this readme
 
 
 
