@@ -8,14 +8,15 @@ DETAILS RETURN VALUE: (real return value that user is waiting)
 
 import os
 from collections import defaultdict
+from threading import Thread
+import schedule
+import time
 
 from flask import Flask, request
 from flask_cors import CORS
 from flask_restful import Resource, Api
 
 import pymssql
-import json
-
 
 application = Flask(__name__)
 #application.debug = False
@@ -29,18 +30,161 @@ RDS_USER = os.environ.get('RDS_USER')
 RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
 
 
-#TEST DATA
-#Nothing for public here
-#############
+########## UTIL METHODS ##############
+
+#SEALED
+def DailyUpdateInParallel():
+    schedule.every().day.at("12:45").do(DailyUpdateMethod)
+
+    while 1:
+        schedule.run_pending()
+        time.sleep(1)
+        
+
+#SEALED
+def DailyUpdateMethod():
+    # This pseude-code is for daily resource increase-decrease and population change check '''
+    # Also there is tax control method in sql server as Stored Procedure '''
+            
+    #Get country id's from country table , foreach it      COUNTRY
+                
+        #Define restFoodDecrease = 0
+        #Define restDrinkDecrease = 0
+        #Get province id's from provinces table, foreach it     PROVINCE
+                    
+            #Su ve yiyecek aynı miktarda tüketileceğinden ikisi de decreaseBesin olarak adlandırıldı.(nüfus kadar)
+            #restFoodDecrease += decreaseBesin
+            #restDrinkDecrease += decreaseBesin
+                    
+            #Tüm kaynaklar için
+            #Calculate totalKaynak += amount + increaseKaynak      province diğer kaynak değişimleri
+
+            #Get resourceID's from ProvinceResources table, foreach it  RESOURCE - benim resource'larımı döndür
+                    
+                #if #Check resources from Natural resources data table, if type is drink:   RESOURCE-TYPE-CHECK
+                    #amount = amount + increaseBesin
+                    #if amount - restDrinkDecrease < 0:
+                        #restDrinkDecrease -= amount
+                        #amount = 0
+                    #else
+                        #restDrinkDecrease = 0
+                        #amount = amount - restDrinkDecrease
+                        
+                #if #Check if type is food:
+                    #amount = amount + increaseBesin
+                    #if amount - restFoodDecrease < 0:
+                        #restFoodDecrease -= amount
+                        #amount = 0
+                    #else
+                        #restFoodDecrease = 0
+                        #amount = amount - restFoodDecrease
+                        
+                #if #Check if type is resource:
+                    #amount = totalKaynak
+                            
+                #SaveMyResourceValue(provinceId, resourceId, amount)
+                        
+            #if restFoodDecrease > 0 OR restDrinkDecrease > 0:
+                #SaveNewPopulation(randomProvinceId, restFoodDecrease>restDrinkDecrease?restFoodDecrease:restDrinkDecrease)
+        
+        
+    try:
+        conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit=True)
+        cursor = conn.cursor(as_dict = True)
+            
+        #FUNCTION PARAMETERS
+        increaseResource = 20
+        increaseBesin = 700
+        taxDivisor = 100
+        ###################
+            
+        #Pay Taxes to Country every day
+        params = (taxDivisor,)
+        cursor.callproc('payTaxes', (params))
+        if cursor.nextset():
+            result = cursor.fetchone()
+            if result['Result'] != 1:
+                return {'info': 1, 'details': -1}
+        else:
+            return {'info': 1, 'details': -1}
+            
+        #Take ProvinceResources table down to update it, daily
+        params = ()
+        cursor.callproc('returnResourceValues', (params))
+        if cursor.nextset():
+            result = cursor.fetchall()
+        else:
+            return {'info': 1, 'details': -1}
+            
+        #Group provinces according to countries they belong
+        groups = defaultdict(list)
+        for row in result:
+            groups[row['CountryID']].append(row)
+            
+        countries = groups.values()
+            
+        update_list = []
+            
+        #Make Changes on Resources
+        for country in countries:
+            restFoodDecrease = 0
+            restDrinkDecrease = 0
+                
+            lastHungryProvinceID = 0
+                
+            for provinceXResource in country:
+                decreaseNutrition = provinceXResource['Population']
+                restFoodDecrease += decreaseNutrition
+                restDrinkDecrease += decreaseNutrition
+                    
+                amount = provinceXResource['Amount']
+                    
+                if provinceXResource['Type'] == 'drink':
+                    amount = amount + increaseBesin
+                    if amount - restDrinkDecrease < 0:
+                        restDrinkDecrease -= amount
+                        amount = 0
+                        lastHungryProvinceID = provinceXResource['ProvinceID']
+                    else:
+                        restDrinkDecrease = 0
+                        amount = amount - restDrinkDecrease
+                if provinceXResource['Type'] == 'food':
+                    amount = amount + increaseBesin
+                    if amount - restFoodDecrease < 0:
+                        restFoodDecrease -= amount
+                        amount = 0
+                        lastHungryProvinceID = provinceXResource['ProvinceID']
+                    else:
+                        restFoodDecrease = 0
+                        amount = amount - restFoodDecrease
+                if provinceXResource['Type'] == 'resource':
+                    amount = amount + increaseResource
+                    
+                #Add new resource values to local list
+                update_list.append((amount, provinceXResource['ProvinceID'], provinceXResource['ResourceID']))
+                    
+            if restFoodDecrease > 0 or restDrinkDecrease > 0:
+                num_of_deads = restFoodDecrease if restFoodDecrease > restDrinkDecrease else restDrinkDecrease
+                
+                params = (num_of_deads, lastHungryProvinceID,)
+                cursor.execute('update dbo.Province set population = population - %d where id = %d', params)
+                    
+        #Update ProvinceResources with new values
+        cursor.executemany('update dbo.ProvinceResources set amount = %d where provinceID = %d and resourceID = %d', update_list)
+        
+        print("Daily Update Finished Successfuly!")
+    except Exception as e:
+        print("Error in Daily Update: " + str(e))
 
 
 ######## API RESOURCE CLASSES ########
 
+#SEALED
 class MainPage(Resource):
     def get(self):
         return {"Author": "Ali İhsan KARABAL", "Project Name": "Super Power API", "Definition": "Mobile Game API"}
 
-
+#SEALED
 class Test(Resource):
     def get(self):
         return {'Test Message(GET)': 'Welcome to new API !!'}
@@ -48,146 +192,16 @@ class Test(Resource):
     def post(self):
         return {'Test Message(POST)': 'Welcome to new API !!'}
 
-
+#SEALED
 class DailyUpdate(Resource):    
     def post(self):
         
-        ''' This pseude-code is for daily resource increase-decrease and population change check '''
-        ''' Also there is tax control method in sql server as Stored Procedure '''
-            
-            #Get country id's from country table , foreach it      COUNTRY
-                
-                #Define restFoodDecrease = 0
-                #Define restDrinkDecrease = 0
-                #Get province id's from provinces table, foreach it     PROVINCE
-                    
-                    #Su ve yiyecek aynı miktarda tüketileceğinden ikisi de decreaseBesin olarak adlandırıldı.(nüfus kadar)
-                    #restFoodDecrease += decreaseBesin
-                    #restDrinkDecrease += decreaseBesin
-                    
-                    #Tüm kaynaklar için
-                    #Calculate totalKaynak += amount + increaseKaynak      province diğer kaynak değişimleri
-
-                    #Get resourceID's from ProvinceResources table, foreach it  RESOURCE - benim resource'larımı döndür
-                    
-                        #if #Check resources from Natural resources data table, if type is drink:   RESOURCE-TYPE-CHECK
-                            #amount = amount + increaseBesin
-                            #if amount - restDrinkDecrease < 0:
-                                #restDrinkDecrease -= amount
-                                #amount = 0
-                            #else
-                                #restDrinkDecrease = 0
-                                #amount = amount - restDrinkDecrease
-                        
-                        #if #Check if type is food:
-                            #amount = amount + increaseBesin
-                            #if amount - restFoodDecrease < 0:
-                                #restFoodDecrease -= amount
-                                #amount = 0
-                            #else
-                                #restFoodDecrease = 0
-                                #amount = amount - restFoodDecrease
-                        
-                        #if #Check if type is resource:
-                            #amount = totalKaynak
-                            
-                        #SaveMyResourceValue(provinceId, resourceId, amount)
-                        
-                #if restFoodDecrease > 0 OR restDrinkDecrease > 0:
-                    #SaveNewPopulation(randomProvinceId, restFoodDecrease>restDrinkDecrease?restFoodDecrease:restDrinkDecrease)
+        run = Thread(target = DailyUpdateInParallel , args = ())
+        run.start()
+        return {'info': 1, 'details': 'Daily Update Started in different thread!'}
         
-        
-        try:
-            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit=True)
-            cursor = conn.cursor(as_dict = True)
-            
-            #FUNCTION PARAMETERS - I'll take theese from request later
-            increaseResource = 20
-            increaseBesin = 700
-            taxDivisor = 100
-            ###################
-            
-            #Take ProvinceResources table down to update it, daily
-            params = ()
-            cursor.callproc('returnResourceValues', (params))
-            if cursor.nextset():
-                result = cursor.fetchall()
-            else:
-                return {'info': 1, 'details': -1}
-            
-            #Pay Taxes to Country every day
-            params = (taxDivisor,)
-            cursor.callproc('payTaxes', (params))
-            if cursor.nextset():
-                result = cursor.fetchone()
-                if result != 1:
-                    return {'info': 1, 'details': -1}
-            else:
-                return {'info': 1, 'details': -1}
-            
-            #Group provinces according to countries they belong
-            groups = defaultdict(list)
-            for row in result:
-                groups[row['CountryID']].append(row)
-            
-            countries = groups.values()
-            
-            update_list = []
-            
-            #Make Changes on Resources
-            for country in countries:
-                restFoodDecrease = 0
-                restDrinkDecrease = 0
-                
-                lastHungryProvinceID = 0
-                
-                for provinceXResource in country:
-                    decreaseNutrition = provinceXResource['Population']
-                    restFoodDecrease += decreaseNutrition
-                    restDrinkDecrease += decreaseNutrition
-                    
-                    amount = provinceXResource['Amount']
-                    
-                    if provinceXResource['Type'] == 'drink':
-                        amount = amount + increaseBesin
-                        if amount - restDrinkDecrease < 0:
-                            restDrinkDecrease -= amount
-                            amount = 0
-                            lastHungryProvinceID = provinceXResource['ProvinceID']
-                        else:
-                            restDrinkDecrease = 0
-                            amount = amount - restDrinkDecrease
-                    if provinceXResource['Type'] == 'food':
-                        amount = amount + increaseBesin
-                        if amount - restFoodDecrease < 0:
-                            restFoodDecrease -= amount
-                            amount = 0
-                            lastHungryProvinceID = provinceXResource['ProvinceID']
-                        else:
-                            restFoodDecrease = 0
-                            amount = amount - restFoodDecrease
-                    if provinceXResource['Type'] == 'resource':
-                        amount = amount + increaseResource
-                    
-                    #Add new resource values to local list
-                    update_list.append({'amount': amount, 'provinceID': provinceXResource['ProvinceID'], 'resourceID': provinceXResource['ResourceID']})
-                    
-                if restFoodDecrease > 0 or restDrinkDecrease > 0:
-                    num_of_deads = restFoodDecrease if restFoodDecrease > restDrinkDecrease else restDrinkDecrease
-                    
-                    params = (num_of_deads, lastHungryProvinceID,)
-                    cursor.execute('update dbo.Province set population = population - %d where id = %d', params)
-                    
-                    
-            #Update ProvinceResources with new values
-            cursor.executemany('update dbo.ProvinceResources set amount = %d where provinceID = %d and resourceID = %d', update_list)
-                
-        except Exception as e:
-            print("Error: " + str(e))
-            return {'info': -1, 'details': str(e)}
 
-
-
+#SEALED
 #Takes : email, password
 #Returns : uid
 class UserLogin(Resource):
@@ -211,7 +225,7 @@ class UserLogin(Resource):
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
 
-
+#SEALED
 #Takes : uname, cname, email, password
 #Returns : Result as (1,0,-1)
 class UserRegister(Resource):
@@ -244,15 +258,15 @@ class UserRegister(Resource):
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
 
-
+#SEALED
 #Takes : email, password
 #Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, remainingOfIncome
 class MyCountryDetails(Resource):
     def post(self):
         data = request.get_json()
         email = data['email']
-        password = data['password']
-     
+        password = data['password']        
+        
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
@@ -270,6 +284,7 @@ class MyCountryDetails(Resource):
             return {'info': -1, 'details': str(e)}
 
 
+#SEALED
 #Takes : email, password
 #Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, statusWith(me)
 class OtherCountriesDetails(Resource):
@@ -281,11 +296,11 @@ class OtherCountriesDetails(Resource):
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
-    
+                
             params = (email, password,)
             cursor.callproc('otherCountriesDetails', (params))
             if cursor.nextset():
-                result = cursor.fetchone()
+                result = cursor.fetchall()
         
                 return {'info': 1, 'details': result}
             else:
@@ -295,6 +310,7 @@ class OtherCountriesDetails(Resource):
             return {'info': -1, 'details': str(e)}
 
 
+#SEALED
 #Params : email, password
 #Returns : pid, pname, governorName, population, taxRate 
 class MyProvincesDetails(Resource):
@@ -306,19 +322,22 @@ class MyProvincesDetails(Resource):
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
-    
+                        
             params = (email, password,)
             cursor.callproc('myProvincesDetails', (params))
-            cursor.nextset()
-            result = cursor.fetchall()
-    
-            return {'info': 1, 'details': result}
+            if cursor.nextset():
+                result = cursor.fetchall()
+        
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
         
         
 
+#SEALED
 #Params : email, password
 #Returns : pid, pname, population, governorName
 class OtherProvincesDetails(Resource):
@@ -330,13 +349,15 @@ class OtherProvincesDetails(Resource):
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
-    
+            
             params = (email, password,)
             cursor.callproc('otherProvincesDetails', (params))
-            cursor.nextset()
-            result = cursor.fetchall()
+            if cursor.nextset():
+                result = cursor.fetchall()
     
-            return {'info': 1, 'details': result}
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
@@ -718,7 +739,7 @@ api.add_resource(UserRegister, '/userRegister')
 #Forgot Password - Disabled For Now
 #api.add_resource(ForgotPassword, '/forgotPassword')
 
-api.add_resource(MyCountryDetails, '/myCountriesDetails')
+api.add_resource(MyCountryDetails, '/myCountryDetails')
 api.add_resource(OtherCountriesDetails, '/otherProvincesDetails')
 api.add_resource(MyProvincesDetails, '/myProvincesDetails')
 api.add_resource(OtherProvincesDetails, '/otherProvincesDetails')
