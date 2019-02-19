@@ -10,6 +10,7 @@ import os
 from collections import defaultdict
 from threading import Thread
 import schedule
+import datetime
 import time
 
 from flask import Flask, request
@@ -30,11 +31,12 @@ RDS_USER = os.environ.get('RDS_USER')
 RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
 
 
+
 ########## UTIL METHODS ##############
 
 #SEALED
 def DailyUpdateInParallel():
-    schedule.every().day.at("12:45").do(DailyUpdateMethod)
+    schedule.every().day.at("21:00").do(DailyUpdateMethod)
 
     while 1:
         schedule.run_pending()
@@ -93,9 +95,10 @@ def DailyUpdateMethod():
         cursor = conn.cursor(as_dict = True)
             
         #FUNCTION PARAMETERS
-        increaseResource = 20
-        increaseBesin = 700
+        increaseResource = 200
+        increaseBesin = 7000
         taxDivisor = 100
+        besinDivisor = 1000
         ###################
             
         #Pay Taxes to Country every day
@@ -130,12 +133,13 @@ def DailyUpdateMethod():
             restFoodDecrease = 0
             restDrinkDecrease = 0
                 
-            lastHungryProvinceID = 0
+            countryID = 0
                 
             for provinceXResource in country:
-                decreaseNutrition = provinceXResource['Population']
-                restFoodDecrease += decreaseNutrition
-                restDrinkDecrease += decreaseNutrition
+                countryID = provinceXResource['CountryID']
+                population = provinceXResource['Population']
+                restFoodDecrease += population / besinDivisor
+                restDrinkDecrease += population / besinDivisor
                     
                 amount = provinceXResource['Amount']
                     
@@ -144,7 +148,6 @@ def DailyUpdateMethod():
                     if amount - restDrinkDecrease < 0:
                         restDrinkDecrease -= amount
                         amount = 0
-                        lastHungryProvinceID = provinceXResource['ProvinceID']
                     else:
                         restDrinkDecrease = 0
                         amount = amount - restDrinkDecrease
@@ -153,7 +156,6 @@ def DailyUpdateMethod():
                     if amount - restFoodDecrease < 0:
                         restFoodDecrease -= amount
                         amount = 0
-                        lastHungryProvinceID = provinceXResource['ProvinceID']
                     else:
                         restFoodDecrease = 0
                         amount = amount - restFoodDecrease
@@ -166,8 +168,9 @@ def DailyUpdateMethod():
             if restFoodDecrease > 0 or restDrinkDecrease > 0:
                 num_of_deads = restFoodDecrease if restFoodDecrease > restDrinkDecrease else restDrinkDecrease
                 
-                params = (num_of_deads, lastHungryProvinceID,)
-                cursor.execute('update dbo.Province set population = population - %d where id = %d', params)
+                params = (num_of_deads, countryID, countryID,)
+                #Kill equal # of people in every province of same country
+                cursor.execute('update dbo.Province set population = (population - %d / (select count(*) from Province where countryID = %d and population > 0)) where countryID = %d and population > 0', params)
                     
         #Update ProvinceResources with new values
         cursor.executemany('update dbo.ProvinceResources set amount = %d where provinceID = %d and resourceID = %d', update_list)
@@ -182,7 +185,7 @@ def DailyUpdateMethod():
 #SEALED
 class MainPage(Resource):
     def get(self):
-        return {"Author": "Ali İhsan KARABAL", "Project Name": "Super Power API", "Definition": "Mobile Game API"}
+        return {"Author": "Ali İhsan KARABAL", "Project Name": "Super Power API", "Definition": "Mobile Game API", "Server Time": str(datetime.datetime.now())}
 
 #SEALED
 class Test(Resource):
@@ -213,14 +216,20 @@ class UserLogin(Resource):
             data = request.get_json()
             email = data['email']
             password = data['password']
-                        
+            
             params = (email, password,)
             cursor.callproc('userLogin', (params))
             if cursor.nextset():
                 result = cursor.fetchone()
+                cursor.close()
+                conn.close()
                 return {'info': 1, 'details': result['ID']}
             else:
+                cursor.close()
+                conn.close()
                 return {'info': 1, 'details': -1}
+            
+            return {'info': 'asdasdsa geliyo'}
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
