@@ -25,10 +25,10 @@ api = Api(application)
 CORS(application)
 
 
-RDS_SERVER_NAME = os.environ.get('RDS_SERVER_NAME')
-RDS_DATABASE = os.environ.get('RDS_DATABASE')
-RDS_USER = os.environ.get('RDS_USER')
-RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
+RDS_SERVER_NAME = 'aa1ddkx4hgbroia.ciwdqj6fxzhj.eu-central-1.rds.amazonaws.com:1433'#os.environ.get('RDS_SERVER_NAME')
+RDS_DATABASE = 'superpower'#os.environ.get('RDS_DATABASE')
+RDS_USER = 'admin'#os.environ.get('RDS_USER')
+RDS_PASSWORD = 'ninjaminja'#os.environ.get('RDS_PASSWORD')
 
 
 
@@ -36,7 +36,7 @@ RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
 
 #SEALED
 def DailyUpdateInParallel():
-    schedule.every().day.at("21:00").do(DailyUpdateMethod)
+    schedule.every().day.at("11:20").do(DailyUpdateMethod)
 
     while 1:
         schedule.run_pending()
@@ -132,10 +132,12 @@ def DailyUpdateMethod():
         for country in countries:
             restFoodDecrease = 0
             restDrinkDecrease = 0
-                
+            
+            print(country)
             countryID = 0
                 
             for provinceXResource in country:
+                #print(provinceXResource)
                 countryID = provinceXResource['CountryID']
                 population = provinceXResource['Population']
                 restFoodDecrease += population / besinDivisor
@@ -170,7 +172,10 @@ def DailyUpdateMethod():
                 
                 params = (num_of_deads, countryID, countryID,)
                 #Kill equal # of people in every province of same country
-                cursor.execute('update dbo.Province set population = (population - %d / (select count(*) from Province where countryID = %d and population > 0)) where countryID = %d and population > 0', params)
+                cursor.execute("""UPDATE P 
+                                SET P.population = P.population - (%d / (select count(*) from Province K where K.countryID = %d and K.population > 0))
+                                FROM dbo.Province AS P
+                                where P.countryID = %d and P.population > 0""", params)
                     
         #Update ProvinceResources with new values
         cursor.executemany('update dbo.ProvinceResources set amount = %d where provinceID = %d and resourceID = %d', update_list)
@@ -209,14 +214,14 @@ class DailyUpdate(Resource):
 #Returns : uid
 class UserLogin(Resource):
     def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit=True)
             cursor = conn.cursor(as_dict = True)
-            
-            data = request.get_json()
-            email = data['email']
-            password = data['password']
-            
+                        
             params = (email, password,)
             cursor.callproc('userLogin', (params))
             if cursor.nextset():
@@ -228,8 +233,6 @@ class UserLogin(Resource):
                 cursor.close()
                 conn.close()
                 return {'info': 1, 'details': -1}
-            
-            return {'info': 'asdasdsa geliyo'}
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
@@ -244,23 +247,21 @@ class UserRegister(Resource):
         countryName = data['cname']
         email = data['email']
         password = data['password']
-        
+                
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
-            
             
             params = (uname, countryName, email, password,)
             cursor.callproc('userRegister', (params))
             if cursor.nextset():
                 result = cursor.fetchone()
-                            
-                if result["Result"] == 1:
-                    return {'info': 1, 'details': 1} 
-                elif result["Result"] == 0:
-                    return {'info': 1, 'details': 0}
-                elif result["Result"] == -1:
-                    return {'info': 1, 'details': -1}
+                
+                if 'id' in result:
+                    cursor.nextset()
+                    result = cursor.fetchone()
+                
+                return {'info': 1, 'details': result['Result']}
             else:
                 return {'info': 0, 'details': 'An Error Occured!'}
         except Exception as e:
@@ -275,7 +276,7 @@ class MyCountryDetails(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']        
-        
+                
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
