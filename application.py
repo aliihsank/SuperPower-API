@@ -25,10 +25,10 @@ api = Api(application)
 CORS(application)
 
 
-RDS_SERVER_NAME = 'aa1ddkx4hgbroia.ciwdqj6fxzhj.eu-central-1.rds.amazonaws.com:1433'#os.environ.get('RDS_SERVER_NAME')
-RDS_DATABASE = 'superpower'#os.environ.get('RDS_DATABASE')
-RDS_USER = 'admin'#os.environ.get('RDS_USER')
-RDS_PASSWORD = 'ninjaminja'#os.environ.get('RDS_PASSWORD')
+RDS_SERVER_NAME = os.environ.get('RDS_SERVER_NAME')
+RDS_DATABASE = os.environ.get('RDS_DATABASE')
+RDS_USER = os.environ.get('RDS_USER')
+RDS_PASSWORD = os.environ.get('RDS_PASSWORD')
 
 
 
@@ -750,7 +750,7 @@ api.add_resource(UserRegister, '/userRegister')
 #api.add_resource(ForgotPassword, '/forgotPassword')
 
 api.add_resource(MyCountryDetails, '/myCountryDetails')
-api.add_resource(OtherCountriesDetails, '/otherProvincesDetails')
+api.add_resource(OtherCountriesDetails, '/otherCountriesDetails')
 api.add_resource(MyProvincesDetails, '/myProvincesDetails')
 api.add_resource(OtherProvincesDetails, '/otherProvincesDetails')
 
