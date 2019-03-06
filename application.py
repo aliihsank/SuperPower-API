@@ -2,7 +2,6 @@
 """
 INFO 1= Successful request, 0 or -1 = Server or Database Error
 DETAILS RETURN VALUE: (real return value that user is waiting)
-
 """
 
 
@@ -373,7 +372,7 @@ class OtherProvincesDetails(Resource):
             return {'info': -1, 'details': str(e)}
 
 
-'''
+#SEALED
 #Returns : My army informations - armyBudget, List<armyCorps,opearation>
 class ArmyInformations(Resource):
     def post(self):
@@ -382,18 +381,101 @@ class ArmyInformations(Resource):
         password = data['password']
         countryID = data['countryId']
         
-        rows = cursor.execute("{call armyInformations(?,?,?)}", (email, password, countryID)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "id" : row[0],
-                "budget" : row[1],
-                "corpDetails" : row[2]
-                }
-            dataList.append(data_as_dict)
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
             
-        return json.dumps(dataList)
+            params = (email, password, countryID)
+            cursor.callproc('armyInformations', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
 
+#SEALED
+#Returns : rows in countryAggrements table related to users country
+class AggrementsInformations(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        countryID = data['countryId']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+            
+            params = (email, password, countryID)
+            cursor.callproc('aggrementsInformations', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+        
+#SEALED
+#Returns : rows in countryLaws table related to users country
+class LawsInformations(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        countryID = data['countryId']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+            
+            params = (email, password, countryID)
+            cursor.callproc('lawsInformations', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+    
+
+#SEALED
+#Returns : users provinces last bugdets
+class BudgetInformations(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        countryID = data['countryId']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+            
+            params = (email, password, countryID)
+            cursor.callproc('budgetInformations', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+    
+
+
+'''
 #Params : corpId, targetProvinceId, mission
 #Returns : successful
 class GiveMissionToCorps(Resource):
@@ -423,34 +505,11 @@ class AbortMissionOfCorp(Resource):
         password = data['password']
         corpID = ['corpId']
         missionID = ['missionId']
-
         success = cursor.execute("{call abortMissionOfCorp(?,?,?,?)}", (email, password, corpID, missionID)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
-        
-
-#Returns : rows in countryAggrements table related to users country
-class AggrementsInformations(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        countryID = data['countryId']
-
-        rows = cursor.execute("{call aggrementsInformations(?,?,?)}", (email, password, countryID)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "c1Id" : row[0],
-                "c2Id" : row[1],
-                "aggrementId" : row[2],
-                "endDate": row[3]
-                }
-            dataList.append(data_as_dict)
-            
-        return json.dumps(dataList)
         
     
 #Params : c1Id, c2Id, aggrementId
@@ -463,14 +522,12 @@ class DeclineAggrement(Resource):
         c1ID = data['c1Id']
         c2ID = data['c2Id']
         aggrementID = data['aggrementId']
-
         success = cursor.execute("{call declineAggrement(?,?,?,?,?)}", (email, password, c1ID, c2ID, aggrementID)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
         
-
 #Params : c1Id, c2Id, aggrementId, endDate
 #Returns : successful
 class OfferAggrement(Resource):
@@ -482,14 +539,12 @@ class OfferAggrement(Resource):
         c2ID = data['c2Id']
         aggrementID = data['aggrementId']
         endDate = data['endDate']
-
         success = cursor.execute("{call offerAggrement(?,?,?,?,?,?)}", (email, password, c1ID, c2ID, aggrementID, endDate)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
         
-
 #Params : c1Id, c2Id, aggrementId, answer
 #Returns : successful
 class AnswerAggrementOffer(Resource):
@@ -502,7 +557,6 @@ class AnswerAggrementOffer(Resource):
         aggrementID = data['aggrementId']
         endDate = data['endDate']
         answer = data['answer']
-
         success = cursor.execute("{call answerAggrementOffer(?,?,?,?,?,?,?)}", (email, password, c1ID, c2ID, aggrementID, endDate, answer)).fetchval()
         if(success >= 0):
             return {'successful': True}
@@ -516,7 +570,6 @@ class AggrementOfferInformations(Resource):
         email = data['email']
         password = data['password']
         countryID = data['countryId']
-
         rows = cursor.execute("{call aggrementOfferInformations(?,?,?)}", (email, password, countryID)).fetchall()
         dataList = []
         for row in rows:
@@ -538,7 +591,6 @@ class RegulationsInformations(Resource):
         email = data['email']
         password = data['password']
         countryID = data['countryId']
-
         rows = cursor.execute("{call regulationsInformations(?,?,?)}", (email, password, countryID)).fetchall()
         dataList = []
         for row in rows:
@@ -552,26 +604,6 @@ class RegulationsInformations(Resource):
         return json.dumps(dataList)
     
     
-#Returns : rows in countryLaws table related to users country
-class LawsInformations(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        countryID = data['countryId']
-
-        rows = cursor.execute("{call lawsInformations(?,?,?)}", (email, password, countryID)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "rId" : row[1],
-                "startDate" : row[2],
-                "endDate" : row[3]
-                }
-            dataList.append(data_as_dict)
-            
-        return json.dumps(dataList)
-    
     
 #Params : cId, rId
 #Returns : successful
@@ -582,7 +614,6 @@ class DeclineRegulation(Resource):
         password = data['password']
         countryID = data['countryId']
         regulationID = data['regulationId']
-
         success = cursor.execute("{call declineRegulation(?,?,?,?)}", (email, password, countryID, regulationID)).fetchval()
         if(success >= 0):
             return {'successful': True}
@@ -599,14 +630,11 @@ class DeclineLaw(Resource):
         password = data['password']
         countryID = data['countryId']
         lawID = data['lawId']
-
         success = cursor.execute("{call declineLaw(?,?,?,?)}", (email, password, countryID, lawID)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
-
-
 #Params : cId, rId, endDate
 #Returns : successful
 class MakeRegulation(Resource):
@@ -617,7 +645,6 @@ class MakeRegulation(Resource):
         countryID = data['countryId']
         regulationID = data['regulationId']
         endDate = data['endDate']
-
         success = cursor.execute("{call makeRegulation(?,?,?,?,?)}", (email, password, countryID, regulationID, endDate)).fetchval()
         if(success >= 0):
             return {'successful': True}
@@ -631,38 +658,15 @@ class MakeLaw(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']
-
         countryID = data['countryId']
         lawID = data['lawId']
         endDate = data['endDate']
-
         success = cursor.execute("{call makeLaw(?,?,?,?,?)}", (email, password, countryID, lawID, endDate)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
         
-    
-#Returns : users provinces last bugdets
-class BudgetInformations(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        countryID = data['countryId']
-
-        rows = cursor.execute("{call budgetInformations(?,?,?)}", (email, password, countryID)).fetchall()
-        dataList = []
-        for row in rows:
-            data_as_dict = {
-                "provinceID" : row[0],
-                "amount" : row[1],
-                "remaining" : row[2],
-                "year" : row[3]
-                }
-            dataList.append(data_as_dict)
-            
-        return json.dumps(dataList)
     
     
 #Params : provinceId, amount, year
@@ -675,7 +679,6 @@ class SetBudgetForProvince(Resource):
         provinceID = ['provinceId']
         year = data['year']
         amount = data['amount']
-
         success = cursor.execute("{call setBudgetForProvince(?,?,?,?,?)}", (email, password, provinceID, year, amount)).fetchval()
         if(success >= 0):
             return {'successful': True}
@@ -692,14 +695,12 @@ class SetBudgetForArmy(Resource):
         password = data['password']
         amount = ['amount']
         countryID = data['countryId']
-
         success = cursor.execute("{call setBudgetForArmy(?,?,?,?,?)}", (email, password, amount, countryID)).fetchval()
         if(success >= 0):
             return {'successful': True}
         else:
             return {'successful': False}
         
-
 #Params : provinceId, taxRate
 #Returns : successful
 class SetTaxRateForProvince(Resource):
@@ -709,7 +710,6 @@ class SetTaxRateForProvince(Resource):
         password = data['password']
         provinceID = data['provinceId']
         taxRate = data['taxRate']
-
         success = cursor.execute("{call setTaxRateForProvince(?,?,?,?)}", (email, password, provinceID, taxRate)).fetchval()
         if(success >= 0):
             return {'successful': True}
@@ -743,7 +743,6 @@ api.add_resource(Test, '/test')
 api.add_resource(DailyUpdate, '/dailyUpdate')
 
 api.add_resource(UserLogin, '/userLogin')  
-
 api.add_resource(UserRegister, '/userRegister')
 
 #Forgot Password - Disabled For Now
@@ -753,30 +752,26 @@ api.add_resource(MyCountryDetails, '/myCountryDetails')
 api.add_resource(OtherCountriesDetails, '/otherCountriesDetails')
 api.add_resource(MyProvincesDetails, '/myProvincesDetails')
 api.add_resource(OtherProvincesDetails, '/otherProvincesDetails')
+api.add_resource(ArmyInformations, '/armyInformations')
+api.add_resource(AggrementsInformations, '/aggrementsInformations')
+api.add_resource(LawsInformations, '/lawsInformations')
+api.add_resource(BudgetInformations, '/budgetInformations')
+
 
 """
-api.add_resource(ArmyInformations, '/armyInformations')
 api.add_resource(GiveMissionToCorps, '/giveMissionToCorps')
 api.add_resource(AbortMissionOfCorp, '/abortMissionOfCorp')
-
-api.add_resource(AggrementsInformations, '/aggrementsInformations')
 api.add_resource(AggrementOfferInformations, '/aggrementOfferInformations')
 api.add_resource(OfferAggrement, '/offerAggrement')
 api.add_resource(DeclineAggrement, '/declineAggrement')
 api.add_resource(AnswerAggrementOffer, '/answerAggrementOffer')
-
 api.add_resource(RegulationsInformations, '/regulationsInformations')
-api.add_resource(LawsInformations, '/lawsInformations')
 api.add_resource(DeclineRegulation, '/declineRegulation')
 api.add_resource(DeclineLaw, '/declineLaw')
 api.add_resource(MakeRegulation, '/makeRegulation')
 api.add_resource(MakeLaw, '/makeLaw')
-
-api.add_resource(BudgetInformations, '/budgetInformations')
 api.add_resource(SetBudgetForProvince, '/setBudgetForProvince')
 api.add_resource(SetBudgetForArmy, '/setBudgetForArmy')
 api.add_resource(SetTaxRateForProvince, '/setTaxRateForProvince')
-
 api.add_resource(MakeInvestment, '/makeInvestment')
-
 """
