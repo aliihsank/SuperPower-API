@@ -379,13 +379,12 @@ class ArmyInformations(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']
-        countryID = data['countryId']
         
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (email, password, countryID)
+            params = (email, password)
             cursor.callproc('armyInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
@@ -404,13 +403,12 @@ class AggrementsInformations(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']
-        countryID = data['countryId']
         
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (email, password, countryID)
+            params = (email, password)
             cursor.callproc('aggrementsInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
@@ -429,13 +427,12 @@ class LawsInformations(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']
-        countryID = data['countryId']
         
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (email, password, countryID)
+            params = (email, password)
             cursor.callproc('lawsInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
@@ -455,13 +452,12 @@ class BudgetInformations(Resource):
         data = request.get_json()
         email = data['email']
         password = data['password']
-        countryID = data['countryId']
         
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (email, password, countryID)
+            params = (email, password)
             cursor.callproc('budgetInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
