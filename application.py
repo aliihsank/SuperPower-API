@@ -11,6 +11,7 @@ from threading import Thread
 import schedule
 import datetime
 import time
+import json
 
 from flask import Flask, request
 from flask_cors import CORS
@@ -412,7 +413,10 @@ class AggrementsInformations(Resource):
             cursor.callproc('aggrementsInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
-    
+                
+                for i in range(0, len(result)):
+                    result[i]["endDate"] = json.dumps(result[i]["endDate"], indent=4, sort_keys=True, default=str)
+                    
                 return {'info': 1, 'details': result}
             else:
                 return {'info': 0, 'details': 'An Error Occured!'}
@@ -436,7 +440,11 @@ class LawsInformations(Resource):
             cursor.callproc('lawsInformations', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
-    
+                
+                for i in range(0, len(result)):
+                    result[i]["startDate"] = json.dumps(result[i]["startDate"], indent=4, sort_keys=True, default=str)
+                    result[i]["endDate"] = json.dumps(result[i]["endDate"], indent=4, sort_keys=True, default=str)
+                        
                 return {'info': 1, 'details': result}
             else:
                 return {'info': 0, 'details': 'An Error Occured!'}
