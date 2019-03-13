@@ -133,7 +133,6 @@ def DailyUpdateMethod():
             restFoodDecrease = 0
             restDrinkDecrease = 0
             
-            print(country)
             countryID = 0
                 
             for provinceXResource in country:
@@ -247,12 +246,13 @@ class UserRegister(Resource):
         countryName = data['cname']
         email = data['email']
         password = data['password']
+        color = data["color"]
                 
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (uname, countryName, email, password,)
+            params = (uname, countryName, email, password, color, )
             cursor.callproc('userRegister', (params))
             if cursor.nextset():
                 result = cursor.fetchone()
@@ -271,7 +271,7 @@ class UserRegister(Resource):
 #SEALED
 #Takes : email, password
 #Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, remainingOfIncome
-class MyCountryDetails(Resource):
+class CountryDetails(Resource):
     def post(self):
         data = request.get_json()
         email = data['email']
@@ -282,7 +282,7 @@ class MyCountryDetails(Resource):
             cursor = conn.cursor(as_dict = True)
                         
             params = (email, password,)
-            cursor.callproc('myCountryDetails', (params))
+            cursor.callproc('countryDetails', (params))
             if cursor.nextset():
                 result = cursor.fetchone()
         
@@ -293,37 +293,10 @@ class MyCountryDetails(Resource):
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
 
-
-#SEALED
-#Takes : email, password
-#Returns : cid, cname, totalPopulation, avgTaxRate, #ofProvinces, statusWith(me)
-class OtherCountriesDetails(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-     
-        try:
-            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
-            cursor = conn.cursor(as_dict = True)
-                
-            params = (email, password,)
-            cursor.callproc('otherCountriesDetails', (params))
-            if cursor.nextset():
-                result = cursor.fetchall()
-        
-                return {'info': 1, 'details': result}
-            else:
-                return {'info': 0, 'details': 'An Error Occured!'}
-        except Exception as e:
-            print("Error: " + str(e))
-            return {'info': -1, 'details': str(e)}
-
-
 #SEALED
 #Params : email, password
 #Returns : pid, pname, governorName, population, taxRate 
-class MyProvincesDetails(Resource):
+class ProvincesDetails(Resource):
     def post(self):
         data = request.get_json()
         email = data['email']
@@ -334,7 +307,7 @@ class MyProvincesDetails(Resource):
             cursor = conn.cursor(as_dict = True)
                         
             params = (email, password,)
-            cursor.callproc('myProvincesDetails', (params))
+            cursor.callproc('provincesDetails', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
         
@@ -346,33 +319,6 @@ class MyProvincesDetails(Resource):
             return {'info': -1, 'details': str(e)}
         
         
-
-#SEALED
-#Params : email, password
-#Returns : pid, pname, population, governorName
-class OtherProvincesDetails(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        
-        try:
-            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
-            cursor = conn.cursor(as_dict = True)
-            
-            params = (email, password,)
-            cursor.callproc('otherProvincesDetails', (params))
-            if cursor.nextset():
-                result = cursor.fetchall()
-    
-                return {'info': 1, 'details': result}
-            else:
-                return {'info': 0, 'details': 'An Error Occured!'}
-        except Exception as e:
-            print("Error: " + str(e))
-            return {'info': -1, 'details': str(e)}
-
-
 #SEALED
 #Returns : My army informations - armyBudget, List<armyCorps,opearation>
 class ArmyInformations(Resource):
@@ -396,6 +342,36 @@ class ArmyInformations(Resource):
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
+
+
+#SEALED
+#Params : corpType, mission, provinceName
+#Returns : successful
+class GiveMissionToCorps(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        corpID = data['corpID']
+        targetProvinceID = data['targetProvinceID']
+        mission = data['mission']
+            
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+            
+            params = (email, password, corpID, targetProvinceID, mission)
+            cursor.callproc('giveMissionToCorps', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+
 
 #SEALED
 #Returns : rows in countryAggrements table related to users country
@@ -424,6 +400,37 @@ class AggrementsInformations(Resource):
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
         
+
+#SEALED
+#Params : c1Name, c2Nam, aggrementTitle, endDate
+#Returns : successful
+class OfferAggrement(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        c1ID = data['c1ID']
+        c2ID = data['c2ID']
+        aggrementID = data['aggrementID']
+        endDate = data['endDate']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True)
+            
+            params = (email, password, c1ID, c2ID, aggrementID, endDate)
+            cursor.callproc('offerAggrement', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+                    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+        
+
 #SEALED
 #Returns : rows in countryLaws table related to users country
 class LawsInformations(Resource):
@@ -451,22 +458,54 @@ class LawsInformations(Resource):
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
-    
+
 
 #SEALED
-#Returns : users provinces last bugdets
-class BudgetInformations(Resource):
+#Params : cName, lawTitle, startDate
+#Returns : successful
+class MakeLaw(Resource):
     def post(self):
         data = request.get_json()
         email = data['email']
         password = data['password']
+        cID = data['cID']
+        lawID = data['lawID']
+        startDate = data['startDate']
+        
+        try:
+            conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
+            cursor = conn.cursor(as_dict = True) 
+            
+            params = (email, password, cID, lawID, startDate)
+            cursor.callproc('makeLaw', (params))
+            if cursor.nextset():
+                result = cursor.fetchall()
+                    
+                return {'info': 1, 'details': result}
+            else:
+                return {'info': 0, 'details': 'An Error Occured!'}
+        except Exception as e:
+            print("Error: " + str(e))
+            return {'info': -1, 'details': str(e)}
+        
+
+#SEALED
+#Params : provinceID, amount
+#Returns : successful
+class SetBudgetForProvince(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+        provinceID = ['provinceID']
+        amount = data['amount']
         
         try:
             conn = pymssql.connect(server = RDS_SERVER_NAME, user = RDS_USER, password = RDS_PASSWORD, database = RDS_DATABASE, autocommit = True)
             cursor = conn.cursor(as_dict = True)
             
-            params = (email, password)
-            cursor.callproc('budgetInformations', (params))
+            params = (email, password, provinceID, amount)
+            cursor.callproc('setBudgetForProvince', (params))
             if cursor.nextset():
                 result = cursor.fetchall()
     
@@ -476,29 +515,10 @@ class BudgetInformations(Resource):
         except Exception as e:
             print("Error: " + str(e))
             return {'info': -1, 'details': str(e)}
-    
+        
 
 
 '''
-#Params : corpId, targetProvinceId, mission
-#Returns : successful
-class GiveMissionToCorps(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        corpID = ['corpId']
-        provinceID = ['provinceId']
-        mission = ['mission']
-            
-        
-        success = cursor.execute("{call giveMissionToCorps(?,?,?,?,?)}", (email, password, corpID, provinceID, mission)).fetchval()
-        if(success >= 0):
-            return {'successful': True}
-        else:
-            return {'successful': False}
-        
-        
 #Params : corpId,missionId
 #Returns : successful
 #Definition : Gives corps a new mission about going back to where they came
@@ -532,22 +552,6 @@ class DeclineAggrement(Resource):
         else:
             return {'successful': False}
         
-#Params : c1Id, c2Id, aggrementId, endDate
-#Returns : successful
-class OfferAggrement(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        c1ID = data['c1Id']
-        c2ID = data['c2Id']
-        aggrementID = data['aggrementId']
-        endDate = data['endDate']
-        success = cursor.execute("{call offerAggrement(?,?,?,?,?,?)}", (email, password, c1ID, c2ID, aggrementID, endDate)).fetchval()
-        if(success >= 0):
-            return {'successful': True}
-        else:
-            return {'successful': False}
         
 #Params : c1Id, c2Id, aggrementId, answer
 #Returns : successful
@@ -655,40 +659,7 @@ class MakeRegulation(Resource):
         else:
             return {'successful': False}
     
-#Params : cId, lId
-#Returns : successful
-class MakeLaw(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        countryID = data['countryId']
-        lawID = data['lawId']
-        endDate = data['endDate']
-        success = cursor.execute("{call makeLaw(?,?,?,?,?)}", (email, password, countryID, lawID, endDate)).fetchval()
-        if(success >= 0):
-            return {'successful': True}
-        else:
-            return {'successful': False}
-        
-    
-    
-#Params : provinceId, amount, year
-#Returns : successful
-class SetBudgetForProvince(Resource):
-    def post(self):
-        data = request.get_json()
-        email = data['email']
-        password = data['password']
-        provinceID = ['provinceId']
-        year = data['year']
-        amount = data['amount']
-        success = cursor.execute("{call setBudgetForProvince(?,?,?,?,?)}", (email, password, provinceID, year, amount)).fetchval()
-        if(success >= 0):
-            return {'successful': True}
-        else:
-            return {'successful': False}
-        
+
     
 #Params : amount
 #Returns : successful
@@ -752,18 +723,21 @@ api.add_resource(UserRegister, '/userRegister')
 #Forgot Password - Disabled For Now
 #api.add_resource(ForgotPassword, '/forgotPassword')
 
-api.add_resource(MyCountryDetails, '/myCountryDetails')
-api.add_resource(OtherCountriesDetails, '/otherCountriesDetails')
-api.add_resource(MyProvincesDetails, '/myProvincesDetails')
-api.add_resource(OtherProvincesDetails, '/otherProvincesDetails')
+api.add_resource(CountryDetails, '/countryDetails')
+api.add_resource(ProvincesDetails, '/provincesDetails')
+
 api.add_resource(ArmyInformations, '/armyInformations')
 api.add_resource(AggrementsInformations, '/aggrementsInformations')
 api.add_resource(LawsInformations, '/lawsInformations')
-api.add_resource(BudgetInformations, '/budgetInformations')
+
+api.add_resource(GiveMissionToCorps, '/giveMissionToCorps')
+api.add_resource(OfferAggrement, '/offerAggrement')
+api.add_resource(MakeLaw, '/makeLaw')
+api.add_resource(SetBudgetForProvince, '/setBudgetForProvince')
+
 
 
 """
-api.add_resource(GiveMissionToCorps, '/giveMissionToCorps')
 api.add_resource(AbortMissionOfCorp, '/abortMissionOfCorp')
 api.add_resource(AggrementOfferInformations, '/aggrementOfferInformations')
 api.add_resource(OfferAggrement, '/offerAggrement')
@@ -773,8 +747,6 @@ api.add_resource(RegulationsInformations, '/regulationsInformations')
 api.add_resource(DeclineRegulation, '/declineRegulation')
 api.add_resource(DeclineLaw, '/declineLaw')
 api.add_resource(MakeRegulation, '/makeRegulation')
-api.add_resource(MakeLaw, '/makeLaw')
-api.add_resource(SetBudgetForProvince, '/setBudgetForProvince')
 api.add_resource(SetBudgetForArmy, '/setBudgetForArmy')
 api.add_resource(SetTaxRateForProvince, '/setTaxRateForProvince')
 api.add_resource(MakeInvestment, '/makeInvestment')
